@@ -1,0 +1,33 @@
+paths:
+  /api/v1/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token (rotates refresh token)
+      description: >
+        Returns a new access token. If using cookie flow, the refresh token is read from the HttpOnly cookie `rt`
+        and rotated to a new one (cookie updated). Mobile clients may pass `refreshToken` in the request body.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthRefreshRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthRefreshResponse"
+        "401":
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorDetailed"
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"

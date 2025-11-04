@@ -1,0 +1,16 @@
+paths:
+  /api/v1/auth/logout-all:
+    post:
+      tags: [Auth]
+      summary: Logout all sessions for the authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: All sessions revoked
+        "401":
+          description: Missing or invalid access token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorDetailed"

@@ -1,0 +1,162 @@
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+      example:
+        error: "Something went wrong"
+
+    # New: detailed error envelope used by the global error handler
+    ApiErrorDetailed:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: UNAUTHORIZED
+            message:
+              type: string
+              example: Invalid credentials
+      required: [error]
+
+    HealthOk:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        service:
+          type: string
+        ts:
+          type: string
+          format: date-time
+      example:
+        ok: true
+        service: "api"
+        ts: "2025-11-04T10:00:00.000Z"
+
+    DbHealthOk:
+      type: object
+      properties:
+        db:
+          type: string
+          enum: [up]
+        result:
+          type: object
+          properties:
+            ok:
+              type: integer
+      example:
+        db: "up"
+        result: { ok: 1 }
+
+    DbHealthErr:
+      type: object
+      properties:
+        db:
+          type: string
+          enum: [down]
+        error:
+          type: string
+      example:
+        db: "down"
+        error: "timeout or auth failed"
+
+    # ---------- Auth Schemas ----------
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [OWNER, CUSTOMER]
+        name:
+          type: string
+          nullable: true
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+      required: [id, role, email, phone]
+
+    AuthRegisterRequest:
+      type: object
+      required: [name, email, phone, password]
+      properties:
+        name: { type: string, example: "Shivam Sharma" }
+        email: { type: string, format: email, example: "shivam@example.com" }
+        phone: { type: string, example: "+919876543210" }
+        password: { type: string, minLength: 8, example: "StrongPass!23" }
+
+    AuthLoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email, example: "shivam@example.com" }
+        password: { type: string, minLength: 8, example: "StrongPass!23" }
+
+    AuthLoginResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        accessToken:
+          type: string
+          description: "JWT access token (send as Authorization: Bearer <token>)"
+      required: [user, accessToken]
+      example:
+        user:
+          id: "1a2b3c4d-aaaa-bbbb-cccc-1234567890ab"
+          role: "OWNER"
+          name: "Shivam Sharma"
+          email: "shivam@example.com"
+          phone: "+919876543210"
+        accessToken: "eyJhbGciOi..."
+
+    AuthRegisterResponse:
+      allOf:
+        - $ref: "#/components/schemas/AuthLoginResponse"
+      description: "Same shape as login: returns user + accessToken. Refresh token is set as HttpOnly cookie."
+
+    AuthRefreshRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          description: >
+            Optional if using cookie-based flow.
+            If not provided in the body, the server reads the HttpOnly cookie `rt`.
+      example:
+        refreshToken: "base64urlrefresh..."
+
+    AuthRefreshResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+      required: [accessToken]
+      example:
+        accessToken: "eyJhbGciOi..."
+
+    AuthMeResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [OWNER, CUSTOMER]
+      required: [userId, role]

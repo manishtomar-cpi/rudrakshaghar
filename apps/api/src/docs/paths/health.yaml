@@ -1,0 +1,30 @@
+paths:
+  /api/v1/health:
+    get:
+      tags: [Health]
+      summary: API health
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthOk'
+
+  /api/v1/db/health:
+    get:
+      tags: [Health]
+      summary: Database connectivity check
+      responses:
+        '200':
+          description: DB reachable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DbHealthOk'
+        '500':
+          description: DB error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DbHealthErr'

@@ -1,0 +1,20 @@
+paths:
+  /api/v1/auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current user identity from access token
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthMeResponse"
+        "401":
+          description: Missing or invalid access token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorDetailed"
