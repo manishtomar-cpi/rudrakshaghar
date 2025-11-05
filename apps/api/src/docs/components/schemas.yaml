@@ -160,3 +160,105 @@ components:
           type: string
           enum: [OWNER, CUSTOMER]
       required: [userId, role]
+    Product:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        slug: { type: string }
+        category: { type: string, enum: [RUDRAKSHA, GEMSTONE, ACCESSORY] }
+        price_paise: { type: integer, minimum: 0 }
+        description: { type: string, nullable: true }
+        authenticity_note: { type: string, nullable: true }
+        active: { type: boolean }
+        stock_qty: { type: integer, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+      required: [id, title, slug, category, price_paise, active]
+
+    ProductImage:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        product_id: { type: string, format: uuid }
+        url: { type: string }
+        position: { type: integer }
+      required: [id, product_id, url, position]
+
+    ProductVariant:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        product_id: { type: string, format: uuid }
+        label: { type: string }
+        price_paise: { type: integer, nullable: true }
+        sku: { type: string, nullable: true }
+        active: { type: boolean }
+      required: [id, product_id, label, active]
+
+    ProductDetail:
+      allOf:
+        - $ref: "#/components/schemas/Product"
+      properties:
+        images:
+          type: array
+          items: { $ref: "#/components/schemas/ProductImage" }
+        variants:
+          type: array
+          items: { $ref: "#/components/schemas/ProductVariant" }
+
+    ProductListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Product" }
+        total: { type: integer }
+      required: [items, total]
+
+    OwnerCreateProductRequest:
+      type: object
+      required: [title, category, price_paise]
+      properties:
+        title: { type: string, example: "Gauri Shankar Rudraksha" }
+        category: { type: string, enum: [RUDRAKSHA, GEMSTONE, ACCESSORY] }
+        price_paise: { type: integer, example: 129900 }
+        description: { type: string }
+        authenticity_note: { type: string }
+        active: { type: boolean, default: true }
+        stock_qty: { type: integer, nullable: true }
+
+    OwnerUpdateProductRequest:
+      type: object
+      properties:
+        title: { type: string }
+        category: { type: string, enum: [RUDRAKSHA, GEMSTONE, ACCESSORY] }
+        price_paise: { type: integer }
+        description: { type: string }
+        authenticity_note: { type: string }
+        active: { type: boolean }
+        stock_qty: { type: integer, nullable: true }
+
+    ImageOrderItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        position: { type: integer }
+      required: [id, position]
+
+    VariantCreateRequest:
+      type: object
+      required: [label]
+      properties:
+        label: { type: string, example: "8mm Bead" }
+        price_paise: { type: integer, nullable: true }
+        sku: { type: string }
+        active: { type: boolean, default: true }
+
+    VariantUpdateRequest:
+      type: object
+      properties:
+        label: { type: string }
+        price_paise: { type: integer, nullable: true }
+        sku: { type: string }
+        active: { type: boolean }
