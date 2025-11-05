@@ -1,0 +1,98 @@
+paths:
+  /api/v1/owner/app-settings:
+    get:
+      tags: [Settings]
+      summary: Get App Settings (owner)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Current settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppSettingsOwner"
+        '404': { description: Not configured }
+    post:
+      tags: [Settings]
+      summary: Create App Settings if empty
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppSettingsCreateRequest"
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppSettingsOwner"
+        '409': { description: Already configured }
+    put:
+      tags: [Settings]
+      summary: Update App Settings (partial)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppSettingsUpdateRequest"
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppSettingsOwner"
+
+  /owner/app-settings/qr:
+    post:
+      tags: [Settings]
+      summary: Set UPI QR by URL
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url: { type: string, format: uri }
+              required: [url]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  upiQrUrl: { type: string, format: uri }
+
+  /owner/app-settings/qr-file:
+    post:
+      tags: [Settings]
+      summary: Upload UPI QR image (multipart)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  upiQrUrl: { type: string, format: uri }

@@ -1,0 +1,13 @@
+paths:
+  /api/v1/public/payments/config:
+    get:
+      tags: [Payments]
+      summary: Public payments config for checkout (scan-to-pay)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicPaymentsConfig"
+        '404': { description: Not configured }

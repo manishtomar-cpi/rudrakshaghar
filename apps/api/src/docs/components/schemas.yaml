@@ -160,6 +160,7 @@ components:
           type: string
           enum: [OWNER, CUSTOMER]
       required: [userId, role]
+
     Product:
       type: object
       properties:
@@ -262,3 +263,57 @@ components:
         price_paise: { type: integer, nullable: true }
         sku: { type: string }
         active: { type: boolean }
+
+    # ---------- App Settings (Owner + Public) ----------
+    AppSettingsOwner:
+      type: object
+      properties:
+        businessName: { type: string }
+        supportEmail: { type: string, format: email }
+        supportPhone: { type: string }
+        whatsappNumber: { type: string }
+        upiVpa: { type: string }
+        upiPayeeName: { type: string }
+        upiQrUrl: { type: string, format: uri, nullable: true }
+        pickupAddress: { type: string }
+        currency: { type: string, example: INR }
+        logoUrl: { type: string, format: uri, nullable: true }
+        returnAddress: { type: string, nullable: true }
+        privacyUrl: { type: string, format: uri, nullable: true }
+        termsUrl: { type: string, format: uri, nullable: true }
+        returnPolicyUrl: { type: string, format: uri, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    AppSettingsCreateRequest:
+      type: object
+      required:
+        [businessName, supportEmail, supportPhone, whatsappNumber, upiVpa, upiPayeeName, pickupAddress]
+      properties:
+        businessName: { type: string, example: "Rudraksha Ghar" }
+        supportEmail: { type: string, format: email, example: "support@rudraksha.example" }
+        supportPhone: { type: string, example: "+919999999999" }
+        whatsappNumber: { type: string, example: "+919999999999" }
+        upiVpa: { type: string, example: "merchant@bank" }
+        upiPayeeName: { type: string, example: "Shivam Sharma" }
+        pickupAddress: { type: string, example: "New Delhi, India" }
+        currency: { type: string, example: "INR" }
+        logoUrl: { type: string, format: uri, example: "https://cdn.../logo.png" }
+        returnAddress: { type: string, example: "Returns Dept, New Delhi" }
+        privacyUrl: { type: string, format: uri }
+        termsUrl: { type: string, format: uri }
+        returnPolicyUrl: { type: string, format: uri }
+        upiQrUrl: { type: string, format: uri, example: "https://cdn.../upi-qr.png" }
+
+    AppSettingsUpdateRequest:
+      allOf:
+        - $ref: "#/components/schemas/AppSettingsCreateRequest"
+
+    PublicPaymentsConfig:
+      type: object
+      properties:
+        businessName: { type: string }
+        upiVpa: { type: string }
+        upiPayeeName: { type: string }
+        upiQrUrl: { type: string, format: uri, nullable: true }
+      required: [businessName, upiVpa, upiPayeeName]
