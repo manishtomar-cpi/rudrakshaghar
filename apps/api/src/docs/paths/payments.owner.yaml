@@ -1,0 +1,75 @@
+paths:
+  /api/v1/owner/payments:
+    get:
+      tags: [Payments]
+      summary: List payments for review (owner)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: status
+          schema: { oneOf: [ { type: string }, { type: array, items: { type: string } } ] }
+        - in: query
+          name: from
+          schema: { type: string, format: date-time }
+        - in: query
+          name: to
+          schema: { type: string, format: date-time }
+        - in: query
+          name: q
+          schema: { type: string }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - in: query
+          name: sort
+          schema: { type: string, enum: [created_at, -created_at] }
+      responses:
+        '200': { description: OK }
+
+  /api/v1/owner/payments/{orderId}/confirm:
+    post:
+      tags: [Payments]
+      summary: Confirm manual UPI payment (owner)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                utr: { type: string }
+                notes: { type: string }
+      responses:
+        '200': { description: OK }
+        '409': { description: Illegal transition }
+
+  /api/v1/owner/payments/{orderId}/reject:
+    post:
+      tags: [Payments]
+      summary: Reject submitted payment (owner)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+              required: [reason]
+      responses:
+        '200': { description: OK }
+        '409': { description: Illegal transition }

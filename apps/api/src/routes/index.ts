@@ -5,6 +5,8 @@ import ownerProductsRouter from "./owner.products.routes";
 import catalogRouter from "./catalog.routes";
 import ownerAppSettingsRouter from "./owner.app-settings.routes";
 import publicPaymentsRouter from "./public.payments.routes";
+import ownerOrdersRouter from "./owner.orders.routes";
+import ownerPaymentsRouter from "./owner.payments.routes";
 
 const router = Router();
 
@@ -20,24 +22,24 @@ router.get("/db/health", async (_req, res) => {
     const result = await db.query("select 1 as ok");
     res.json({ db: "up", result: result.rows[0] });
   } catch (err: any) {
-    // eslint-disable-next-line no-console
     console.error("[db/health] error:", err);
-    res
-      .status(500)
-      .json({ db: "down", error: err?.message ?? "unknown error" });
+    res.status(500).json({ db: "down", error: err?.message ?? "unknown error" });
   }
 });
 
-/**
- * Feature routes (ORDER MATTERS)
- */
+/** Feature routes (ORDER MATTERS) */
 router.use("/auth", authRouter);
 
-// Mount App Settings BEFORE ownerProducts so it can't be shadowed
-router.use("/owner", ownerAppSettingsRouter); // /owner/app-settings...
+// Settings before owner products
+router.use("/owner", ownerAppSettingsRouter);
 
-router.use("/owner", ownerProductsRouter); // products, images, variants...
-router.use("/catalog", catalogRouter); // public reads
-router.use("/public", publicPaymentsRouter); // /public/payments/config
+// Owner: products, then orders & payments
+router.use("/owner", ownerProductsRouter);
+router.use("/owner", ownerOrdersRouter);
+router.use("/owner", ownerPaymentsRouter);
+
+// Public + catalog
+router.use("/catalog", catalogRouter);
+router.use("/public", publicPaymentsRouter);
 
 export default router;
