@@ -42,4 +42,19 @@ export const UserRepo = {
     );
     return q.rows[0];
   },
+
+  async updateProfile(id: string, input: { name?: string | null; phone?: string | null }): Promise<UserRow> {
+    const db = getDb();
+    const q = await db.query<UserRow>(
+      `UPDATE users
+         SET name = COALESCE($2, name),
+             phone = COALESCE($3, phone),
+             updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [id, input.name ?? null, input.phone ?? null]
+    );
+    if (!q.rows[0]) throw new Error("User not found");
+    return q.rows[0];
+  },
 };

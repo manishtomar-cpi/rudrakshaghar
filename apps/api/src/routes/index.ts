@@ -1,3 +1,4 @@
+// apps/api/src/routes/index.ts
 import { Router } from "express";
 import { ensureDbConnected, getDb } from "../modules/db";
 import authRouter from "./auth.routes";
@@ -7,6 +8,9 @@ import ownerAppSettingsRouter from "./owner.app-settings.routes";
 import publicPaymentsRouter from "./public.payments.routes";
 import ownerOrdersRouter from "./owner.orders.routes";
 import ownerPaymentsRouter from "./owner.payments.routes";
+
+import customerProfileRouter from "./customer.profile.routes";
+import customerAddressesRouter from "./customer.addresses.routes";
 
 const router = Router();
 
@@ -37,6 +41,10 @@ router.use("/owner", ownerAppSettingsRouter);
 router.use("/owner", ownerProductsRouter);
 router.use("/owner", ownerOrdersRouter);
 router.use("/owner", ownerPaymentsRouter);
+
+// Customer: profile & addresses
+router.use("/", customerProfileRouter);
+router.use("/", customerAddressesRouter);
 
 // Public + catalog
 router.use("/catalog", catalogRouter);

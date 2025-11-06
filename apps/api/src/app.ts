@@ -1,3 +1,4 @@
+// apps/api/src/app.ts
 import express from "express";
 import helmet from "helmet";
 import cors from "cors";
@@ -7,7 +8,7 @@ import router from "./routes";
 import { env } from "./config/env";
 import { requestId } from "./middlewares/requestId";
 import { logger } from "./middlewares/logger";
-import { AppError } from "./utils/errors";
+import { errorHandler } from "./middlewares/errorHandler"; 
 
 const app = express();
 
@@ -39,11 +40,7 @@ mountSwagger(app);
 // API routes mounted at /api/v1
 app.use("/api/v1", router);
 
-/**
- * Optional convenience redirect:
- * If someone calls /owner/*, /public/*, /catalog/*, /health, /db/health
- * without the /api/v1 prefix, redirect them permanently to the right place.
- */
+// Optional redirect for non-/api/v1 callers
 app.use((req, res, next) => {
   const p = req.path;
   const needsBase =
@@ -61,22 +58,9 @@ app.use((req, res, next) => {
 });
 
 // 404
-app.use((_req, res) => res.status(404).json({ error: "Not Found" }));
+app.use((_req, res) => res.status(404).json({ error: { code: "NOT_FOUND", message: "Not Found" } }));
 
 // Centralized error handler
-app.use((err: any, _req: any, res: any, _next: any) => {
-  if (err?.name === "ZodError") {
-    return res
-      .status(400)
-      .json({ error: { code: "BAD_REQUEST", message: "Validation failed", details: err.errors } });
-  }
-  if (err instanceof AppError) {
-    return res
-      .status(err.status)
-      .json({ error: { code: err.code, message: err.message } });
-  }
-  console.error(err);
-  return res.status(500).json({ error: { code: "INTERNAL", message: "Something went wrong" } });
-});
+app.use(errorHandler); 
 
 export default app;

@@ -1,0 +1,52 @@
+# apps/api/src/docs/paths/customer.profile.yaml
+paths:
+  /api/v1/me/profile:
+    get:
+      tags: [Customers]
+      summary: Get my profile
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: My profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  role: { type: string, enum: [OWNER, CUSTOMER] }
+                  name: { type: string, nullable: true }
+                  email: { type: string, format: email }
+                  phone: { type: string }
+                  createdAt: { type: string, format: date-time }
+                  updatedAt: { type: string, format: date-time }
+        "401":
+          description: Unauthorized
+    patch:
+      tags: [Customers]
+      summary: Update my profile (name/phone)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, minLength: 2, maxLength: 80 }
+                phone: { type: string, minLength: 6, maxLength: 20 }
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorDetailed"
+        "401":
+          description: Unauthorized

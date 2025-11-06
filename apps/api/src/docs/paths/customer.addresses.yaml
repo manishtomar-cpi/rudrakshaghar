@@ -1,0 +1,135 @@
+# apps/api/src/docs/paths/customer.addresses.yaml
+paths:
+  /api/v1/me/addresses:
+    get:
+      tags: [Customers]
+      summary: List my addresses
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: List
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        label: { type: string, nullable: true }
+                        line1: { type: string }
+                        line2: { type: string, nullable: true }
+                        city: { type: string }
+                        state: { type: string }
+                        pincode: { type: string }
+                        country: { type: string }
+                        is_default: { type: boolean }
+                        created_at: { type: string, format: date-time }
+                        updated_at: { type: string, format: date-time }
+    post:
+      tags: [Customers]
+      summary: Create address
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [line1, city, state, pincode, country]
+              properties:
+                label: { type: string }
+                line1: { type: string }
+                line2: { type: string }
+                city: { type: string }
+                state: { type: string }
+                pincode: { type: string }
+                country: { type: string }
+                makeDefault: { type: boolean }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorDetailed"
+        "401":
+          description: Unauthorized
+
+  /api/v1/me/addresses/{id}:
+    patch:
+      tags: [Customers]
+      summary: Update address
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label: { type: string }
+                line1: { type: string }
+                line2: { type: string }
+                city: { type: string }
+                state: { type: string }
+                pincode: { type: string }
+                country: { type: string }
+                makeDefault: { type: boolean }
+      responses:
+        "200":
+          description: Updated
+        "400":
+          description: Validation error
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+    delete:
+      tags: [Customers]
+      summary: Delete address
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
+  /api/v1/me/addresses/{id}/default:
+    patch:
+      tags: [Customers]
+      summary: Set default address
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Updated (now default)
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
