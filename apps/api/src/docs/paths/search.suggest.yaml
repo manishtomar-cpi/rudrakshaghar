@@ -1,0 +1,32 @@
+paths:
+  /api/v1/search/suggest:
+    get:
+      tags: [Catalog]
+      summary: Typeahead suggestions (public)
+      description: Lightweight suggestions for the header search. Only active products.
+      security: []  # PUBLIC
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 64 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 10, default: 8 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        title: { type: string }
+                        slug: { type: string }
+                        primary_image_url: { type: string, format: uri, nullable: true }
+                required: [items]

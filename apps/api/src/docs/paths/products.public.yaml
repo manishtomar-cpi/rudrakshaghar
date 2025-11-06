@@ -1,0 +1,75 @@
+paths:
+  /api/v1/products:
+    get:
+      tags: [Catalog]
+      summary: List products (public)
+      description: Public product list with filters. Only active, non-deleted products are returned.
+      security: []  # PUBLIC
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+        - in: query
+          name: category
+          schema: { type: string, enum: [RUDRAKSHA, GEMSTONE, ACCESSORY] }
+        - in: query
+          name: min_price_paise
+          schema: { type: integer }
+        - in: query
+          name: max_price_paise
+          schema: { type: integer }
+        - in: query
+          name: in_stock
+          schema: { type: boolean }
+        - in: query
+          name: has_images
+          schema: { type: boolean }
+        - in: query
+          name: include
+          schema: { type: string, enum: [none, primary, images], default: primary }
+        - in: query
+          name: images_limit
+          schema: { type: integer, default: 5 }
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, default: 20 }
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [created_at, -created_at, price_paise, -price_paise, title, -title]
+            default: -created_at
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductListResponse"
+
+  /api/v1/products/{slug}:
+    get:
+      tags: [Catalog]
+      summary: Product detail by slug (public)
+      security: []  # PUBLIC
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorDetailed"

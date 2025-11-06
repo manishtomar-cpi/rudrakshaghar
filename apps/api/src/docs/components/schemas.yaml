@@ -317,3 +317,40 @@ components:
         upiPayeeName: { type: string }
         upiQrUrl: { type: string, format: uri, nullable: true }
       required: [businessName, upiVpa, upiPayeeName]
+    Post:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        image_url: { type: string, format: uri }
+        caption: { type: string, nullable: true }
+        priority: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+      required: [id, image_url, priority, created_at, updated_at]
+
+    PostMinimalProduct:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        slug: { type: string }
+        category: { type: string, enum: [RUDRAKSHA, GEMSTONE, ACCESSORY] }
+        price_paise: { type: integer }
+        primary_image_url: { type: string, format: uri }
+      required: [id, title, slug, category, price_paise, primary_image_url]
+
+    PostWithProducts:
+      allOf:
+        - $ref: "#/components/schemas/Post"
+      properties:
+        products:
+          type: array
+          items: { $ref: "#/components/schemas/PostMinimalProduct" }
+
+    HomePostsResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/PostWithProducts" }
+      required: [items]  

@@ -1,0 +1,14 @@
+paths:
+  /api/v1/home/posts:
+    get:
+      tags: [Home]
+      summary: Home promos with linked products (public)
+      description: Returns active posts ordered by priority and created_at, each embedding active products with primary image.
+      security: []  # PUBLIC
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HomePostsResponse"

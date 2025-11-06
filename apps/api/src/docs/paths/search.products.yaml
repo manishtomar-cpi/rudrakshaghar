@@ -1,0 +1,91 @@
+paths:
+  /api/v1/search/products:
+    get:
+      tags: [Catalog]
+      summary: Search products (public)
+      description: Public product search with filters, sorting, pagination, and facets. Returns only active, non-deleted products.
+      security: []  # PUBLIC
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string, minLength: 1, maxLength: 64 }
+        - in: query
+          name: category
+          schema:
+            oneOf:
+              - { type: string, enum: [RUDRAKSHA, GEMSTONE, ACCESSORY] }
+              - { type: array, items: { type: string, enum: [RUDRAKSHA, GEMSTONE, ACCESSORY] } }
+        - in: query
+          name: min_price_paise
+          schema: { type: integer, minimum: 0 }
+        - in: query
+          name: max_price_paise
+          schema: { type: integer, minimum: 0 }
+        - in: query
+          name: in_stock
+          schema: { type: boolean }
+        - in: query
+          name: has_images
+          schema: { type: boolean }
+        - in: query
+          name: include
+          schema: { type: string, enum: [none, primary, images], default: primary }
+        - in: query
+          name: images_limit
+          schema: { type: integer, minimum: 1, maximum: 20, default: 5 }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [created_at, -created_at, price_paise, -price_paise, title, -title]
+            default: -created_at
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: "#/components/schemas/Product"
+                        - type: object
+                          properties:
+                            primary_image_url: { type: string, format: uri, nullable: true }
+                            images:
+                              type: array
+                              items:
+                                $ref: "#/components/schemas/ProductImage"
+                  page: { type: integer }
+                  pageSize: { type: integer }
+                  total: { type: integer }
+                  facets:
+                    type: object
+                    properties:
+                      categories:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            key:
+                              type: string
+                              enum: [RUDRAKSHA, GEMSTONE, ACCESSORY]
+                            count: { type: integer }
+                      price_buckets:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            min: { type: integer }
+                            max: { type: integer, nullable: true }
+                            count: { type: integer }
+                required: [items, page, pageSize, total, facets]
