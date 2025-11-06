@@ -7,6 +7,7 @@ export type AppErrorCode =
   | "NOT_FOUND"
   | "CONFLICT"
   | "RATE_LIMITED"
+  | "UNPROCESSABLE_ENTITY"  
   | "INTERNAL";
 
 /** Default HTTP status for each code (used when not provided) */
@@ -17,6 +18,7 @@ const DEFAULT_STATUS: Record<AppErrorCode, number> = {
   NOT_FOUND: 404,
   CONFLICT: 409,
   RATE_LIMITED: 429,
+  UNPROCESSABLE_ENTITY: 422, // ✅ added
   INTERNAL: 500,
 };
 
@@ -28,6 +30,7 @@ const DEFAULT_MESSAGE: Record<AppErrorCode, string> = {
   NOT_FOUND: "Not found",
   CONFLICT: "Conflict",
   RATE_LIMITED: "Too Many Requests",
+  UNPROCESSABLE_ENTITY: "Unprocessable entity", // ✅ added
   INTERNAL: "Something went wrong",
 };
 
@@ -97,6 +100,10 @@ export class AppError extends Error {
     return new AppError("RATE_LIMITED", message, DEFAULT_STATUS.RATE_LIMITED, details);
   }
 
+  static unprocessable(message = DEFAULT_MESSAGE.UNPROCESSABLE_ENTITY, details?: unknown) {
+    return new AppError("UNPROCESSABLE_ENTITY", message, DEFAULT_STATUS.UNPROCESSABLE_ENTITY, details);
+  }
+
   static internal(message = DEFAULT_MESSAGE.INTERNAL, details?: unknown) {
     return new AppError("INTERNAL", message, DEFAULT_STATUS.INTERNAL, details);
   }
@@ -133,6 +140,8 @@ export const Errors = {
     AppError.conflict(msg, details),
   RateLimited: (msg = DEFAULT_MESSAGE.RATE_LIMITED, details?: unknown) =>
     AppError.rateLimited(msg, details),
+  Unprocessable: (msg = DEFAULT_MESSAGE.UNPROCESSABLE_ENTITY, details?: unknown) =>
+    AppError.unprocessable(msg, details),
   Internal: (msg = DEFAULT_MESSAGE.INTERNAL, details?: unknown) =>
     AppError.internal(msg, details),
 };

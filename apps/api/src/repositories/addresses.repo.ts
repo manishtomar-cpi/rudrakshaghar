@@ -32,6 +32,16 @@ export const AddressesRepo = {
     return q.rows[0] ?? null;
   },
 
+  /** ✅ Ownership-checked fetch (used by checkout) */
+  async findByIdForUser(id: string, userId: string): Promise<AddressRow | null> {
+    const db = getDb();
+    const q = await db.query<AddressRow>(
+      `SELECT * FROM addresses WHERE id = $1 AND user_id = $2`,
+      [id, userId]
+    );
+    return q.rows[0] ?? null;
+  },
+
   async create(a: {
     id: string;
     user_id: string;
@@ -91,7 +101,7 @@ export const AddressesRepo = {
     return q.rows[0] ?? null;
   },
 
- async delete(id: string, userId: string): Promise<boolean> {
+  async delete(id: string, userId: string): Promise<boolean> {
     const db = getDb();
     const q = await db.query(`DELETE FROM addresses WHERE id = $1 AND user_id = $2`, [id, userId]);
     return (q.rowCount ?? 0) > 0;

@@ -1,0 +1,156 @@
+paths:
+  /api/v1/my/orders:
+    get:
+      tags: [Customers]
+      summary: List my orders (with shipment summary)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PLACED, PAYMENT_SUBMITTED, PAYMENT_CONFIRMED, PACKED, SHIPPED, DELIVERED, CANCELLED]
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+      responses:
+        "200":
+          description: Paginated orders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        order_number: { type: string }
+                        status:
+                          type: string
+                          enum: [PLACED, PAYMENT_SUBMITTED, PAYMENT_CONFIRMED, PACKED, SHIPPED, DELIVERED, CANCELLED]
+                        payment_status:
+                          type: string
+                          enum: [NONE, SUBMITTED, CONFIRMED, REJECTED]
+                        total_payable_paise: { type: integer }
+                        created_at: { type: string, format: date-time }
+                        shipment:
+                          type: object
+                          nullable: true
+                          properties:
+                            courier_name: { type: string, nullable: true }
+                            awb_number: { type: string, nullable: true }
+                            tracking_url: { type: string, nullable: true }
+                            shipped_at: { type: string, format: date-time, nullable: true }
+                            delivered_at: { type: string, format: date-time, nullable: true }
+                  page: { type: integer }
+                  pageSize: { type: integer }
+                  total: { type: integer }
+
+  /api/v1/my/orders/{id}:
+    get:
+      tags: [Customers]
+      summary: Get my order (with items, payment, shipment)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Order detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  order:
+                    type: object
+                    properties:
+                      id: { type: string, format: uuid }
+                      order_number: { type: string }
+                      status:
+                        type: string
+                        enum: [PLACED, PAYMENT_SUBMITTED, PAYMENT_CONFIRMED, PACKED, SHIPPED, DELIVERED, CANCELLED]
+                      payment_status:
+                        type: string
+                        enum: [NONE, SUBMITTED, CONFIRMED, REJECTED]
+                      total_item_paise: { type: integer }
+                      shipping_paise: { type: integer }
+                      discount_paise: { type: integer }
+                      total_payable_paise: { type: integer }
+                      created_at: { type: string, format: date-time }
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        product_id: { type: string, format: uuid }
+                        variant_id: { type: string, format: uuid, nullable: true }
+                        title_snapshot: { type: string }
+                        variant_snapshot: { type: string, nullable: true }
+                        unit_price_paise: { type: integer }
+                        qty: { type: integer }
+                        line_total_paise: { type: integer }
+                  payment:
+                    type: object
+                    nullable: true
+                    properties:
+                      id: { type: string, format: uuid }
+                      upi_vpa: { type: string }
+                      qr_payload: { type: string }
+                      intent_url: { type: string }
+                      submitted_at: { type: string, format: date-time, nullable: true }
+                      screenshot_url: { type: string, nullable: true }
+                      reference_text: { type: string, nullable: true }
+                      status:
+                        type: string
+                        enum: [NONE, SUBMITTED, CONFIRMED, REJECTED]
+                      verified_at: { type: string, format: date-time, nullable: true }
+                  shipment:
+                    type: object
+                    nullable: true
+                    properties:
+                      courier_name: { type: string, nullable: true }
+                      awb_number: { type: string, nullable: true }
+                      tracking_url: { type: string, nullable: true }
+                      shipped_at: { type: string, format: date-time, nullable: true }
+                      delivered_at: { type: string, format: date-time, nullable: true }
+        "404":
+          description: Not found
+
+  /api/v1/my/orders/{id}/shipment:
+    get:
+      tags: [Customers]
+      summary: Get shipment only (tiny read)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Shipment summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  shipment:
+                    type: object
+                    nullable: true
+                    properties:
+                      courier_name: { type: string, nullable: true }
+                      awb_number: { type: string, nullable: true }
+                      tracking_url: { type: string, nullable: true }
+                      shipped_at: { type: string, format: date-time, nullable: true }
+                      delivered_at: { type: string, format: date-time, nullable: true }
+        "404":
+          description: Not found

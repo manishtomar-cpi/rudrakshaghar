@@ -1,5 +1,7 @@
+// apps/api/src/repositories/appSettings.repo.ts
 import type { Client } from "pg";
 import { AppSettingsCreateDto, AppSettingsUpdateDto } from "../validators/appSettings.schema";
+import { getDb } from "../modules/db";
 
 export type AppSettingsRow = {
   id: string;
@@ -25,6 +27,13 @@ const SETTINGS_ID = "settings";
 
 export class AppSettingsRepo {
   constructor(private db: Client) {}
+
+  /** Static helper for read-only fetch used by public/checkout flows */
+  static async getOwner(): Promise<AppSettingsRow | null> {
+    const db = getDb();
+    const repo = new AppSettingsRepo(db);
+    return repo.find();
+  }
 
   async find(): Promise<AppSettingsRow | null> {
     const res = await this.db.query<AppSettingsRow>(

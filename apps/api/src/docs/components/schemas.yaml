@@ -354,3 +354,121 @@ components:
           type: array
           items: { $ref: "#/components/schemas/PostWithProducts" }
       required: [items]  
+
+    # ---------- Customer Orders ----------
+
+    CustomerCreateOrderRequest:
+      type: object
+      required: [items, addressId]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: object
+            required: [productId, qty]
+            properties:
+              productId: { type: string, format: uuid }
+              variantId: { type: string, format: uuid }
+              qty:
+                type: integer
+                minimum: 1
+                maximum: 10
+        addressId:
+          type: string
+          format: uuid
+      example:
+        items:
+          - { productId: "11111111-1111-1111-1111-111111111111", qty: 1 }
+          - { productId: "22222222-2222-2222-2222-222222222222", variantId: "33333333-3333-3333-3333-333333333333", qty: 2 }
+        addressId: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+
+    CustomerOrder:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        order_number: { type: string }
+        user_id: { type: string, format: uuid }
+        status:
+          type: string
+          enum: [PLACED, PAYMENT_SUBMITTED, PAYMENT_CONFIRMED, PACKED, SHIPPED, DELIVERED, CANCELLED]
+        total_item_paise: { type: integer }
+        shipping_paise: { type: integer }
+        discount_paise: { type: integer }
+        total_payable_paise: { type: integer }
+        ship_name: { type: string, nullable: true }
+        ship_phone: { type: string, nullable: true }
+        ship_line1: { type: string, nullable: true }
+        ship_line2: { type: string, nullable: true }
+        ship_city: { type: string, nullable: true }
+        ship_state: { type: string, nullable: true }
+        ship_pincode: { type: string, nullable: true }
+        ship_country: { type: string, nullable: true }
+        payment_method: { type: string, example: "UPI_MANUAL" }
+        payment_status: { type: string, enum: [NONE, SUBMITTED, CONFIRMED, REJECTED] }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+      required: [id, order_number, status, total_item_paise, total_payable_paise, payment_method, payment_status]
+
+    CustomerOrderItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        order_id: { type: string, format: uuid }
+        product_id: { type: string, format: uuid }
+        variant_id: { type: string, format: uuid, nullable: true }
+        title_snapshot: { type: string }
+        variant_snapshot: { type: string, nullable: true }
+        unit_price_paise: { type: integer }
+        qty: { type: integer }
+        line_total_paise: { type: integer }
+      required: [id, order_id, product_id, title_snapshot, unit_price_paise, qty, line_total_paise]
+
+    CustomerPayment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        upi_vpa: { type: string }
+        qr_payload: { type: string, description: "UPI payload content; render as QR on FE" }
+        intent_url: { type: string, description: "upi://pay?..." }
+        status: { type: string, enum: [NONE, SUBMITTED, CONFIRMED, REJECTED] }
+        screenshot_url: { type: string, nullable: true, format: uri }
+        reference_text: { type: string, nullable: true }
+        submitted_at: { type: string, format: date-time, nullable: true }
+        verified_at: { type: string, format: date-time, nullable: true }
+        verified_by: { type: string, format: uuid, nullable: true }
+      required: [id, upi_vpa, qr_payload, intent_url, status]
+
+    CustomerOrderDetailResponse:
+      type: object
+      properties:
+        order:
+          $ref: "#/components/schemas/CustomerOrder"
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/CustomerOrderItem" }
+        payment:
+          $ref: "#/components/schemas/CustomerPayment"
+      required: [order, items, payment]
+
+    CustomerOrderListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomerOrder"
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+      required: [items, page, pageSize, total]
+
+    CustomerPaymentProofResponse:
+      type: object
+      properties:
+        payment:
+          $ref: "#/components/schemas/CustomerPayment"
+        order:
+          $ref: "#/components/schemas/CustomerOrder"
+      required: [payment, order]

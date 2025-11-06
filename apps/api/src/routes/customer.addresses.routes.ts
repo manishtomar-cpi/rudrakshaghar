@@ -6,7 +6,6 @@ import { CustomerAddressesController } from "../controllers/customer.addresses.c
 
 const r = Router();
 r.use(authJwt, requireRole("CUSTOMER"));
-
 r.get("/me/addresses", CustomerAddressesController.list);
 r.post("/me/addresses", CustomerAddressesController.create);
 r.patch("/me/addresses/:id", CustomerAddressesController.update);

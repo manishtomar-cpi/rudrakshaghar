@@ -1,3 +1,4 @@
+// apps/api/src/repositories/productVariant.repo.ts
 import { getDb } from "../modules/db";
 
 export type ProductVariantRow = {
@@ -47,5 +48,17 @@ export const ProductVariantRepo = {
       `SELECT * FROM product_variants WHERE product_id=$1 ORDER BY label ASC`, [productId]
     );
     return q.rows;
+  },
+
+  /**  Added for checkout variant validation */
+  async findById(id: string): Promise<ProductVariantRow | null> {
+    const db = getDb();
+    const q = await db.query<ProductVariantRow>(
+      `SELECT id, product_id, label, price_paise, sku, active
+       FROM product_variants
+       WHERE id = $1`,
+      [id]
+    );
+    return q.rows[0] ?? null;
   },
 };

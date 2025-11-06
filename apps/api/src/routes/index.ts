@@ -1,3 +1,4 @@
+// apps/api/src/routes/index.ts
 import { Router } from "express";
 import { ensureDbConnected, getDb } from "../modules/db";
 
@@ -9,12 +10,16 @@ import publicPaymentsRouter from "./public.payments.routes";
 import ownerOrdersRouter from "./owner.orders.routes";
 import ownerPaymentsRouter from "./owner.payments.routes";
 import searchRouter from "./search.routes";
+import customerOrdersRouter from "./customer.orders.routes";
 
-// Phase-2 public routers
+//  public routers
 import publicCatalogAliasesRouter from "./public.catalog.alias.routes";
 import homeRouter from "./home.routes";
 
-//These must NOT be mounted at "/" anymore
+//  "my orders" router (this file)
+import customerMyRouter from "./customer.my.routes";
+
+// These must NOT be mounted at "/" anymore (Phase-3, but we kept aliases)
 import customerProfileRouter from "./customer.profile.routes";
 import customerAddressesRouter from "./customer.addresses.routes";
 
@@ -36,26 +41,30 @@ router.get("/db/health", async (_req, res) => {
   }
 });
 
-/** ORDER MATTERS: mount PUBLIC first, then protected. */
+/** ORDER MATTERS: public first, then protected */
 
-// --- Public endpoints (no auth) ---
-router.use("/catalog", catalogRouter);           // GET /catalog/products, /catalog/products/:slug
-router.use("/", publicCatalogAliasesRouter);     // GET /products, /products/:slug
-router.use("/public", publicPaymentsRouter);     // GET /public/payments/config
-router.use("/home", homeRouter);                 // GET /home/posts
+// Public
+router.use("/catalog", catalogRouter);
+router.use("/", publicCatalogAliasesRouter);
+router.use("/public", publicPaymentsRouter);
+router.use("/home", homeRouter);
 router.use("/search", searchRouter);
 
-// --- Auth endpoints ---
+// Auth
 router.use("/auth", authRouter);
 
-// --- Owner (protected inside each router with authJwt/requireRole) ---
+// Owner
 router.use("/owner", ownerAppSettingsRouter);
 router.use("/owner", ownerProductsRouter);
 router.use("/owner", ownerOrdersRouter);
 router.use("/owner", ownerPaymentsRouter);
 
-// --- Customer 
-router.use("/customer", customerProfileRouter);   // e.g. /customer/me
-router.use("/customer", customerAddressesRouter); // e.g. /customer/addresses
+// Customer —  orders + profile + addresses
+router.use("/", customerOrdersRouter);
+router.use("/", customerProfileRouter);
+router.use("/", customerAddressesRouter);
+
+// Customer - "My Orders & Tracking" (adds /my/* and /me/* shipment tiny read)
+router.use("/", customerMyRouter);
 
 export default router;

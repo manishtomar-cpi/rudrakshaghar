@@ -1,0 +1,105 @@
+paths:
+  /api/v1/orders:
+    post:
+      tags: [Orders]
+      summary: Create order (customer)
+      description: >
+        Places an order for the logged-in customer. Snapshots item pricing,
+        computes totals, and seeds a payments row with UPI payload.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerCreateOrderRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerOrderDetailResponse"
+        "400": { description: Bad request }
+        "401": { description: Unauthorized }
+        "409": { description: Payments not configured or stock conflict }
+
+    get:
+      tags: [Orders]
+      summary: List my orders (customer)
+      description: Returns paginated list of the caller's orders.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerOrderListResponse"
+        "401": { description: Unauthorized }
+
+  /api/v1/orders/{id}:
+    get:
+      tags: [Orders]
+      summary: Get my order (customer)
+      description: Returns an order with items and payment info for the caller.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerOrderDetailResponse"
+        "401": { description: Unauthorized }
+        "404": { description: Not found }
+
+  /api/v1/orders/{id}/payment/proof:
+    post:
+      tags: [Orders]
+      summary: Submit UPI payment proof (customer)
+      description: >
+        Uploads a payment screenshot and optional reference text. Moves payment status to SUBMITTED,
+        and order status to PAYMENT_SUBMITTED.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                ref:
+                  type: string
+                  maxLength: 50
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerPaymentProofResponse"
+        "400": { description: Bad request }
+        "401": { description: Unauthorized }
+        "409": { description: Invalid state (e.g., already confirmed) }
+        "422": { description: Invalid file type/size }
