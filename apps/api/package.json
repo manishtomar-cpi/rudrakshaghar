@@ -39,6 +39,7 @@
     "@types/helmet": "^4.0.0",
     "@types/js-yaml": "^4.0.9",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/luxon": "^3.7.1",
     "@types/multer": "^2.0.0",
     "@types/node": "^24.10.0",
     "@types/pg": "^8.15.6",

@@ -11,7 +11,7 @@ export const AuthController = {
       const input = RegisterSchema.parse(req.body);
       const { user, accessToken, refreshToken } = await AuthService.register(input);
       setRefreshCookie(res, refreshToken, security.jwt.refreshTtlSec);
-      return res.status(201).json({ user, accessToken });
+      return res.status(201).json({ user, accessToken,refreshToken });
     } catch (err) { next(err); }
   },
 
@@ -24,7 +24,7 @@ export const AuthController = {
         ip: req.ip,
       });
       setRefreshCookie(res, refreshToken, security.jwt.refreshTtlSec);
-      return res.json({ user, accessToken });
+      return res.json({ user, accessToken, refreshToken });
     } catch (err) { next(err); }
   },
 

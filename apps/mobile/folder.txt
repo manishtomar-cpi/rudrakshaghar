@@ -1,0 +1,96 @@
+apps/mobile/
+├── app/
+│   ├── _layout.tsx                 # root layout + Toast host
+│   ├── index.tsx                   # splash → bootstrap → redirect
+│   ├── (auth)/
+│   │   └── login.tsx               # owner login screen
+│   └── (app)/
+│       ├── _layout.tsx             # guarded layout (requires AT)
+│       └── home.tsx                # placeholder home after login
+│
+├── assets/
+│   └── logo.png
+│
+├── src/
+│   ├── api/
+│   │   └── axios.ts                # axios instance + 401 refresh/retry
+│   ├── components/
+│   │   ├── RudrakshaSpinner.tsx
+│   │   └── ToastHost.tsx
+│   ├── features/
+│   │   └── auth/
+│   │       ├── store.ts            # zustand store + bootstrap/login/logout
+│   │       └── types.ts            # User/Me/Login/Refresh types
+│   ├── storage/
+│   │   └── secureStore.ts          # RT save/get/delete with fallback
+│   ├── theme/
+│   │   ├── colors.ts
+│   │   ├── spacing.ts
+│   │   └── index.ts
+│   └── utils/
+│       └── toast.ts
+│
+├── .env                            # EXPO_PUBLIC_API_BASE=http://172.20.10.3:4000/api/v1
+├── app.json
+├── babel.config.js                 # includes 'react-native-reanimated/plugin'
+├── package.json
+└── tsconfig.json
+
+
+expexted 
+src/
+  features/
+    auth/
+      store.ts
+      types.ts
+    catalog/
+      api.ts             # typed requests: list items, variants, pricing, etc.
+      store.ts           # filters, pagination, cache (via React Query or Zustand hybrid)
+      types.ts
+    orders/
+      api.ts
+      store.ts           # list, detail, status transitions
+      types.ts
+    payments/
+      api.ts
+      store.ts           # collected, submitted, confirmed
+      types.ts
+    appSettings/
+      api.ts
+      store.ts
+      types.ts
+  components/
+    catalog/
+      CatalogList.tsx
+      ProductCard.tsx
+      SearchBar.tsx
+    orders/
+      OrderList.tsx
+      OrderCard.tsx
+      StatusBadge.tsx
+    payments/
+      PaymentRow.tsx
+      SettlementBadge.tsx
+    shared/
+      EmptyState.tsx
+      ErrorState.tsx
+      Header.tsx
+      Button.tsx
+
+routes
+app/
+  (auth)/
+    login.tsx
+  (app)/
+    _layout.tsx
+    home.tsx
+    catalog/
+      index.tsx          # list + filters
+      [productId].tsx    # detail
+    orders/
+      index.tsx
+      [orderId].tsx
+    payments/
+      index.tsx
+    settings/
+      index.tsx

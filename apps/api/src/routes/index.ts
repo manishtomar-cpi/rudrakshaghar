@@ -2,6 +2,7 @@
 import { Router } from "express";
 import { ensureDbConnected, getDb } from "../modules/db";
 
+
 import authRouter from "./auth.routes";
 import ownerProductsRouter from "./owner.products.routes";
 import catalogRouter from "./catalog.routes";
@@ -11,6 +12,8 @@ import ownerOrdersRouter from "./owner.orders.routes";
 import ownerPaymentsRouter from "./owner.payments.routes";
 import searchRouter from "./search.routes";
 import customerOrdersRouter from "./customer.orders.routes";
+
+import ownerDashboardRouter from "./owner.dashboard.routes";
 
 //  public routers
 import publicCatalogAliasesRouter from "./public.catalog.alias.routes";
@@ -58,6 +61,7 @@ router.use("/owner", ownerAppSettingsRouter);
 router.use("/owner", ownerProductsRouter);
 router.use("/owner", ownerOrdersRouter);
 router.use("/owner", ownerPaymentsRouter);
+router.use("/owner", ownerDashboardRouter);
 
 // Customer —  orders + profile + addresses
 router.use("/", customerOrdersRouter);
