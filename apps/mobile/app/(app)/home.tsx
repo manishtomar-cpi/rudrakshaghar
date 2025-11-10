@@ -1,35 +1,31 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
-import { authStore, useMe } from '../../src/features/auth/store';
-import { colors } from '../../src/theme';
+import { useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { colors, spacing } from '../../src/theme';
+import DashboardScreen from '../../src/components/dashboard/DashboardScreen';
+import { HistoryFilterBar } from '../../src/components/filters/HistoryFilterBar';
+import type { Range } from '../../src/features/dashboard/range';
 
 export default function Home() {
-  const router = useRouter();
-  const me = useMe();
-
-  const logout = async () => {
-    await authStore.getState().logout();
-    router.replace('/(auth)/login');
-  };
-
-  const displayName =
-    me?.user?.name?.trim() ||
-    me?.user?.email ||
-    me?.userId;
+  const [range, setRange] = useState<Range>({ kind: '7d' }); // default 7d
 
   return (
     <View style={styles.container}>
-      <Text style={styles.txt}>Signed in as {displayName}</Text>
-      <Pressable style={styles.btn} onPress={logout}>
-        <Text style={styles.btnTxt}>Logout</Text>
-      </Pressable>
+      <Text style={styles.title}>Dashboard</Text>
+      <Text style={styles.sub}> {range.kind === '7d' ? 'Last 7 days' : ''} </Text>
+
+      {/* Filters */}
+      <HistoryFilterBar value={range} onChange={setRange} enableCustom={true /* turn off if backend can't do start/end */} />
+
+      {/* Dashboard body */}
+      <View style={{ flex: 1 }}>
+        <DashboardScreen range={range} />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.neutral.background, alignItems: 'center', justifyContent: 'center' },
-  txt: { color: '#fff', marginBottom: 12 },
-  btn: { backgroundColor: colors.brand.accent, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
-  btnTxt: { color: '#111', fontWeight: '700' },
+  container: { flex: 1, backgroundColor: colors.neutral.background },
+  title: { color: colors.neutral.white, fontSize: 26, fontWeight: '800', paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
+  sub: { color: '#93a3a9', paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
 });

@@ -1,9 +1,6 @@
-// apps/api/migration.config.js
-const path = require("path");
-require("dotenv").config({ path: path.resolve(__dirname, ".env") });
 module.exports = {
   databaseUrl: process.env.DATABASE_URL,
-   dir: "src/migrations",  
+  dir: "migrations",          // <— keep this
   migrationsTable: "pgmigrations",
   createSchema: true,
 };

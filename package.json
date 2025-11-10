@@ -16,11 +16,23 @@
     "db:studio": "pnpm --filter api prisma studio"
   },
   "devDependencies": {
+    "@expo/metro-config": "^54.0.8",
     "concurrently": "^9.2.1",
+    "metro-minify-terser": "^0.83.3",
     "turbo": "^2.0.0"
   },
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ]
+  "workspaces": ["apps/*", "packages/*"],
+  "pnpm": {
+  "overrides": {
+      "react": "19.1.0",
+      "react-dom": "19.1.0"
+    },
+    "publicHoistPattern": [
+      "react",
+      "react-dom",
+      "react-native",
+      "react-native-renderer",
+      "*expo*"
+    ]
+  }
 }

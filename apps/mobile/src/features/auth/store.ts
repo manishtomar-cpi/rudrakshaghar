@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { api } from '../../api/axios';
 import { getRefreshToken, saveRefreshToken, deleteRefreshToken } from '../../storage/secureStore';
+import { setSessionAccessToken, resetSession } from './session';
 import type { MeResponse, LoginResponse, RefreshResponse, User } from './types';
 
 type AuthState = {
@@ -16,8 +17,14 @@ type AuthState = {
 export const authStore = create<AuthState>((set) => ({
   accessToken: null,
   me: null,
-  setAccessToken: (t) => set({ accessToken: t }),
-  reset: () => set({ accessToken: null, me: null }),
+  setAccessToken: (t) => {
+    setSessionAccessToken(t);
+    set({ accessToken: t });
+  },
+  reset: () => {
+    resetSession();
+    set({ accessToken: null, me: null });
+  },
 
   bootstrap: async () => {
     try {
@@ -30,6 +37,7 @@ export const authStore = create<AuthState>((set) => ({
       if (!at || !newRt) throw new Error('Invalid refresh response');
 
       await saveRefreshToken(newRt);
+      setSessionAccessToken(at);
       set({ accessToken: at });
 
       const me = await api.get<MeResponse>('/auth/me').then((r) => r.data);
@@ -38,6 +46,7 @@ export const authStore = create<AuthState>((set) => ({
       return true;
     } catch {
       await deleteRefreshToken();
+      resetSession();
       set({ accessToken: null, me: null });
       return false;
     }
@@ -52,6 +61,7 @@ export const authStore = create<AuthState>((set) => ({
     if (!at || !rt) throw new Error('Invalid login response');
 
     await saveRefreshToken(rt);
+    setSessionAccessToken(at);
     set({ accessToken: at });
 
     const me: MeResponse = { userId: user?.id ?? 'unknown', role: (user?.role ?? 'OWNER'), user };
@@ -63,10 +73,10 @@ export const authStore = create<AuthState>((set) => ({
   logout: async () => {
     try { await api.post('/auth/logout', {}); } catch {}
     await deleteRefreshToken();
+    resetSession();
     set({ accessToken: null, me: null });
   },
 }));
 
-// Selector hooks
 export const useMe = () => authStore((state) => state.me);
 export const useAccessToken = () => authStore((state) => state.accessToken);

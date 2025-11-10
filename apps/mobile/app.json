@@ -3,7 +3,19 @@
     "name": "Rudrakshaghar Owner",
     "slug": "rudrakshaghar-owner",
     "scheme": "rudrakshaghar",
-    "android": { "adaptiveIcon": { "foregroundImage": "./assets/adaptive-icon.png", "backgroundColor": "#024F05" } },
-    "web": { "bundler": "metro" }
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#024F05"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-web-browser"
+    ]
   }
 }
