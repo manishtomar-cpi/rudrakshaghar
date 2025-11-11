@@ -9,6 +9,7 @@ import { ShipmentsRepo } from "../repositories/shipments.repo";
 import { ShipmentsService } from "../services/shipments.service";
 import { listPaymentsQuerySchema, paymentConfirmSchema, paymentRejectSchema } from "../validators/payments.schema";
 import { AppError } from "../utils/errors";
+import { DashboardService } from "../services/dashboard.service";
 
 function getActorUserId(req: Request): string {
   const id = (req as any)?.user?.userId;
@@ -27,13 +28,35 @@ export class OwnerPaymentController {
     const paymentsSvc = new PaymentsService(ordersRepo, paymentsRepo, audit);
     const shipmentsSvc = new ShipmentsService(ordersRepo, shipmentsRepo, audit);
     const ordersSvc = new OrdersService(ordersRepo, paymentsRepo, shipmentsRepo, audit, paymentsSvc, shipmentsSvc);
-    return { paymentsSvc, ordersSvc };
+    const dash = new DashboardService(db);
+    return { paymentsSvc, ordersSvc, dash };
   }
 
   static async list(req: Request, res: Response) {
     const parsed = listPaymentsQuerySchema.parse(req.query);
-    const { paymentsSvc } = await OwnerPaymentController.deps();
-    const result = await paymentsSvc.list(parsed);
+    const { paymentsSvc, dash } = await OwnerPaymentController.deps();
+
+    let from = parsed.from;
+    let to = parsed.to;
+
+    if (parsed.range) {
+      const win = dash.computeWindow({
+        range: parsed.range,
+        from: parsed.from,
+        to: parsed.to,
+        tz: parsed.tz,
+        limit: 5,
+        include: new Set(),
+      } as any);
+      from = win.fromIso;
+      to = win.toIso;
+    }
+
+    const result = await paymentsSvc.list({
+      ...parsed,
+      from,
+      to,
+    });
     return res.json(result);
   }
 
@@ -55,5 +78,12 @@ export class OwnerPaymentController {
     const { paymentsSvc } = await OwnerPaymentController.deps();
     const result = await paymentsSvc.reject(orderId, body.reason, actorUserId);
     return res.json(result);
+  }
+
+  // ✅ NEW
+  static async rejectReasons(_req: Request, res: Response) {
+    const { paymentsSvc } = await OwnerPaymentController.deps();
+    const items = await paymentsSvc.listRejectReasons();
+    return res.json({ items });
   }
 }

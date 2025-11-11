@@ -1,48 +1,87 @@
 import { PgClientLike, withTx } from "./_tx";
 
 type ListArgs = {
-  status?: string | string[];
+  status?: "SUBMITTED" | "CONFIRMED" | "REJECTED";
+
+  // window (UTC ISO strings)
+  range?: "today" | "7d" | "30d" | "90d" | "custom";
   from?: string;
   to?: string;
+  tz?: string;
+
+  // search/sort/pagination
   q?: string;
   page: number;
   limit: number;
-  sort?: string;
+  sort?: string; // "created_at" | "-created_at"
 };
 
 export class PaymentsRepo {
   constructor(private readonly db: PgClientLike) {}
 
-  async list(args: ListArgs) {
+  private buildWhere(args: ListArgs) {
     const where: string[] = [];
     const params: any[] = [];
 
+    // default queue → SUBMITTED
     if (args.status) {
-      const arr = Array.isArray(args.status) ? args.status : [args.status];
-      params.push(arr);
-      where.push(`p.status = ANY($${params.length})`);
+      params.push(args.status);
+      where.push(`p.status = $${params.length}`);
     } else {
-      where.push(`p.status = 'SUBMITTED'`); // default queue
+      where.push(`p.status = 'SUBMITTED'`);
     }
 
-    if (args.from) {
-      params.push(args.from);
-      where.push(`p.created_at >= $${params.length}`);
-    }
-    if (args.to) {
-      params.push(args.to);
-      where.push(`p.created_at < $${params.length}`);
+    // Window: verified_at for CONFIRMED/REJECTED, created_at for SUBMITTED
+    const useVerifiedAt =
+      args.status === "CONFIRMED" || args.status === "REJECTED";
+
+    if (args.from && args.to) {
+      params.push(args.from, args.to);
+      where.push(
+        useVerifiedAt
+          ? `(p.verified_at >= $${params.length - 1} AND p.verified_at < $${params.length})`
+          : `(p.created_at  >= $${params.length - 1} AND p.created_at  < $${params.length})`
+      );
+    } else {
+      if (args.from) {
+        params.push(args.from);
+        where.push(
+          useVerifiedAt
+            ? `p.verified_at >= $${params.length}`
+            : `p.created_at  >= $${params.length}`
+        );
+      }
+      if (args.to) {
+        params.push(args.to);
+        where.push(
+          useVerifiedAt
+            ? `p.verified_at < $${params.length}`
+            : `p.created_at  < $${params.length}`
+        );
+      }
     }
 
+    // free-text search across basic order fields + payment ref
     if (args.q) {
       params.push(`%${args.q}%`);
       const p = `$${params.length}`;
-      where.push(`(o.order_number ILIKE ${p} OR o.ship_name ILIKE ${p} OR o.ship_phone ILIKE ${p} OR p.reference_text ILIKE ${p})`);
+      where.push(
+        `(o.order_number ILIKE ${p} OR o.ship_name ILIKE ${p} OR o.ship_phone ILIKE ${p} OR p.reference_text ILIKE ${p})`
+      );
     }
 
-    const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
-    const sortSql = args.sort === "-created_at" ? "ORDER BY p.created_at DESC" : "ORDER BY p.created_at ASC";
+    return { where, params };
+    }
 
+  async list(args: ListArgs) {
+    const { where, params } = this.buildWhere(args);
+    const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+    const sortSql =
+      args.sort === "-created_at"
+        ? "ORDER BY p.created_at DESC"
+        : "ORDER BY p.created_at ASC";
+
+    // total count
     const countSql = `
       SELECT COUNT(*)::int AS total
       FROM payments p
@@ -51,12 +90,39 @@ export class PaymentsRepo {
     `;
     const total = (await this.db.query(countSql, params)).rows[0]?.total ?? 0;
 
+    // paging
     const offset = (args.page - 1) * args.limit;
     params.push(args.limit, offset);
 
+    // amount derived from order_items sum(line_total_paise)
+    // (no reliance on any payment amount column)
     const listSql = `
       SELECT
-        p.*,
+        p.id,
+        p.order_id                         AS "orderId",
+        p.status,
+        p.created_at,
+        p.updated_at,
+        p.submitted_at                     AS "submittedAt",
+        p.verified_at,
+        p.reference_text,
+        p.rejection_reason,
+
+        -- paise for the UI (safest, schema-agnostic)
+        COALESCE((
+          SELECT SUM(oi.line_total_paise)::bigint
+          FROM order_items oi
+          WHERE oi.order_id = o.id
+        ), 0)                               AS amount,
+
+        -- flat order fields for card
+        o.order_number                      AS "orderNumber",
+        o.ship_name                         AS "customerName",
+        o.ship_phone                        AS "customerPhone",
+        o.status                            AS "orderStatus",
+        o.payment_status                    AS "orderPaymentStatus",
+
+        -- nested 'order' for back-compat
         jsonb_build_object(
           'id', o.id,
           'order_number', o.order_number,
@@ -64,7 +130,7 @@ export class PaymentsRepo {
           'payment_status', o.payment_status,
           'ship_name', o.ship_name,
           'ship_phone', o.ship_phone
-        ) AS order
+        )                                   AS "order"
       FROM payments p
       JOIN orders o ON o.id = p.order_id
       ${whereSql}
@@ -72,6 +138,7 @@ export class PaymentsRepo {
       LIMIT $${params.length - 1} OFFSET $${params.length}
     `;
     const items = (await this.db.query(listSql, params)).rows;
+
     return { items, page: args.page, pageSize: args.limit, total };
   }
 
@@ -85,7 +152,12 @@ export class PaymentsRepo {
     tx: PgClientLike,
     paymentId: string,
     status: "CONFIRMED" | "REJECTED",
-    extras: { verified_at?: Date; verified_by?: string | null; rejection_reason?: string; reference_text?: string | null }
+    extras: {
+      verified_at?: Date;
+      verified_by?: string | null;
+      rejection_reason?: string;
+      reference_text?: string | null;
+    }
   ) {
     const fields: string[] = [`status = $2`, `updated_at = NOW()`];
     const params: any[] = [paymentId, status];
@@ -109,6 +181,17 @@ export class PaymentsRepo {
 
     const sql = `UPDATE payments SET ${fields.join(", ")} WHERE id = $1 RETURNING *`;
     return (await tx.query(sql, params)).rows[0];
+  }
+
+  /** Server-provided canned reasons (kept schema-agnostic). */
+  async listRejectReasons(): Promise<string[]> {
+    return [
+      "Incorrect UTR or reference",
+      "Amount mismatch",
+      "Duplicate submission",
+      "Illegible/unclear proof",
+      "Payment not received",
+    ];
   }
 
   async tx<T>(fn: (tx: PgClientLike) => Promise<T>) {

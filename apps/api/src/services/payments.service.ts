@@ -136,4 +136,9 @@ export class PaymentsService {
 
     return { order, payment };
   }
+
+  // ✅ NEW
+  async listRejectReasons(): Promise<string[]> {
+    return this.payments.listRejectReasons();
+  }
 }

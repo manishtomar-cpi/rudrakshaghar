@@ -9,6 +9,7 @@ import { ShipmentsService } from "../services/shipments.service";
 import { AuditService } from "../services/audit.service";
 import { listOrdersQuerySchema, orderStatusPatchSchema, shipmentPatchSchema } from "../validators/orders.schema";
 import { AppError } from "../utils/errors";
+import { DashboardService } from "../services/dashboard.service";
 
 function getActorUserId(req: Request): string {
   const id = (req as any)?.user?.userId;
@@ -27,13 +28,35 @@ export class OwnerOrderController {
     const paymentsSvc = new PaymentsService(ordersRepo, paymentsRepo, audit);
     const shipmentsSvc = new ShipmentsService(ordersRepo, shipmentsRepo, audit);
     const ordersSvc = new OrdersService(ordersRepo, paymentsRepo, shipmentsRepo, audit, paymentsSvc, shipmentsSvc);
-    return { ordersSvc, shipmentsSvc };
+    const dash = new DashboardService(db);
+    return { ordersSvc, shipmentsSvc, dash };
   }
 
   static async list(req: Request, res: Response) {
     const parsed = listOrdersQuerySchema.parse(req.query);
-    const { ordersSvc } = await OwnerOrderController.deps();
-    const result = await ordersSvc.list(parsed);
+    const { ordersSvc, dash } = await OwnerOrderController.deps();
+
+    // enrich from/to via dashboard window if range present
+    let from = parsed.from;
+    let to = parsed.to;
+    if (parsed.range) {
+      const win = dash.computeWindow({
+        range: parsed.range,
+        from: parsed.from,
+        to: parsed.to,
+        tz: parsed.tz,
+        limit: 5,
+        include: new Set(),
+      } as any);
+      from = win.fromIso;
+      to = win.toIso;
+    }
+
+    const result = await ordersSvc.list({
+      ...parsed,
+      from,
+      to,
+    });
     return res.json(result);
   }
 

@@ -11,6 +11,12 @@ import { logger } from "./middlewares/logger";
 import { errorHandler } from "./middlewares/errorHandler"; 
 
 const app = express();
+app.set("etag", false);
+app.use((req, res, next) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  next();
+});
 
 // Security headers (disable CSP so Swagger UI can inject scripts)
 app.use(helmet({ contentSecurityPolicy: false }));

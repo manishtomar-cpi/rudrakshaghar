@@ -14,7 +14,7 @@ import searchRouter from "./search.routes";
 import customerOrdersRouter from "./customer.orders.routes";
 
 import ownerDashboardRouter from "./owner.dashboard.routes";
-
+import ownerAnalyticsRouter from "./owner.analytics.routes";
 //  public routers
 import publicCatalogAliasesRouter from "./public.catalog.alias.routes";
 import homeRouter from "./home.routes";
@@ -62,7 +62,7 @@ router.use("/owner", ownerProductsRouter);
 router.use("/owner", ownerOrdersRouter);
 router.use("/owner", ownerPaymentsRouter);
 router.use("/owner", ownerDashboardRouter);
-
+router.use(ownerAnalyticsRouter);
 // Customer —  orders + profile + addresses
 router.use("/", customerOrdersRouter);
 router.use("/", customerProfileRouter);

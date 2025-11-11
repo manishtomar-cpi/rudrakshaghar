@@ -37,11 +37,23 @@ export class DashboardService {
         from = start; to = end;
         break;
       }
+      case "90d": { 
+        const end = (tz ? DateTime.now().setZone(tz) : DateTime.now()).endOf("day").plus({ seconds: 1 });
+        const start = end.minus({ days: 90 }).startOf("day");
+        from = start; to = end;
+        break;
+      }
       case "custom": {
         const f = tz ? DateTime.fromISO(q.from!, { zone: tz }) : DateTime.fromISO(q.from!);
         const t = tz ? DateTime.fromISO(q.to!, { zone: tz }) : DateTime.fromISO(q.to!);
         from = f; to = t;
         break;
+      }
+      default: {
+        // default to 7d if not provided
+        const end = (tz ? DateTime.now().setZone(tz) : DateTime.now()).endOf("day").plus({ seconds: 1 });
+        const start = end.minus({ days: 7 }).startOf("day");
+        from = start; to = end;
       }
     }
 
@@ -70,13 +82,13 @@ export class DashboardService {
       out.catalog = await this.getCatalogSignals(q.limit);
     }
     if (q.include?.has("meetings")) {
-      out.meetings = { upcoming: [] }; // placeholder until meetings repo lands
+      out.meetings = { upcoming: [] };
     }
 
     return out;
   }
 
-  // ------- Phase 1 -------
+  // ------- Summary -------
   private async getSummary(args: { fromIso: string; toIso: string }) {
     const { fromIso, toIso } = args;
 
@@ -96,12 +108,12 @@ export class DashboardService {
 
     return {
       paymentsToReview,
-      ordersNew: statusMap.get("NEW") ?? 0,
+      ordersNew: statusMap.get("PLACED") ?? 0,
       ordersPaymentSubmitted: statusMap.get("PAYMENT_SUBMITTED") ?? 0,
       ordersPacked: statusMap.get("PACKED") ?? 0,
       ordersShipped: statusMap.get("SHIPPED") ?? 0,
       ordersDelivered: statusMap.get("DELIVERED") ?? 0,
-      ordersCanceled: statusMap.get("CANCELED") ?? 0,
+      ordersCanceled: statusMap.get("CANCELLED") ?? 0,
       revenuePaid,
       ordersPlaced,
       activeProducts: productsCount.active,
@@ -117,7 +129,6 @@ export class DashboardService {
     return { payments, ordersNeedingShipment };
   }
 
-  // ------- Phase 2 -------
   private async getCharts(args: { fromIso: string; toIso: string; tz?: string }) {
     const { fromIso, toIso, tz } = args;
     const [revenueDaily, ordersDaily, topProducts] = await Promise.all([
@@ -128,7 +139,6 @@ export class DashboardService {
     return { revenueDaily, ordersDaily, topProducts };
   }
 
-  // ------- Phase 3 -------
   private async getSettingsSignal() {
     const s = await AppSettingsRepo.getOwner();
     const configured = !!s;

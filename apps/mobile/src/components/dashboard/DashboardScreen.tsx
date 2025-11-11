@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ScrollView, RefreshControl, View, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 
@@ -9,137 +9,67 @@ import { ShipmentQueue } from "./ShipmentQueue";
 import { MiniChart } from "./MiniChart";
 import { TopProductsList } from "./TopProductsList";
 import { SettingsBanner } from "./SettingsBanner";
-import { CatalogSignals } from "./CatalogSignals";
 import { KpiGridSkeleton, ListSkeleton, ChartSkeleton } from "./Skeletons";
+import { ErrorBanner } from "../shared/ErrorBanner";
+import { AuthExpiryBanner } from "../shared/AuthExpiryBanner";
 
-import { api } from "../../api/axios";
 import { colors, spacing } from "../../theme";
-import { SectionHeader } from "./SectionHeader";
-import { formatCount, formatCurrencyINR } from "../../features/dashboard/transformers";
+import { formatCurrencyINR } from "../../features/dashboard/transformers";
 
 import type { Range } from "../../features/dashboard/range";
-import { toQueryParams } from "../../features/dashboard/range";
-
-type DashboardData = {
-  window: { tz: string };
-  summary?: {
-    paymentsToReview: number;
-    ordersPlaced: number;
-    ordersPaymentSubmitted: number;
-    ordersPacked: number;
-    ordersShipped: number;
-    ordersDelivered: number;
-    ordersCanceled: number;
-    revenuePaid: number;
-  };
-  settings?: {
-    configured: boolean;
-    upiConfigured: boolean;
-    missing: string[];
-  };
-  queues?: {
-    payments: Array<{ id: string; orderId: string; amount: number; createdAt: string }>;
-    ordersNeedingShipment: Array<{ id: string; orderId: string; customer: string; createdAt: string }>;
-  };
-  charts?: {
-    revenueDaily: Array<{ date: string; amount: number }>;
-    ordersDaily: Array<{ date: string; count: number }>;
-    topProducts: Array<{ id: string; name: string; qty: number; revenue: number }>;
-  };
-  catalog?: {
-    lowOrNoImage: number;
-    recentlyUpdated: number;
-  };
-};
-
-// helper: safe request (don’t crash the whole dashboard if one section errors)
-async function getSafe<T>(url: string, params?: Record<string, any>): Promise<T | null> {
-  try {
-    const { data } = await api.get<T>(url, params ? { params } : undefined);
-    return data;
-  } catch (_e) {
-    return null;
-  }
-}
+import { toQueryParams, labelFor } from "../../features/dashboard/range";
+import { useDashboard } from "../../features/dashboard/hooks";
+import type { DashboardResponse } from "../../features/dashboard/types";
+import { Card } from "../shared/Card";
+import { HistoryFilterBar } from "../filters/HistoryFilterBar";
 
 type Props = {
-  range: Range;           // ← required (Today / 7d / 30d / 90d / Custom)
-  tz?: string;            // optional tz (defaults to 'Asia/Kolkata')
-  limit?: number;         // queue size (defaults to 5)
+  range?: Range;
+  tz?: string;
+  limit?: number;
 };
 
-export default function DashboardScreen({ range, tz = "Asia/Kolkata", limit = 5 }: Props) {
+export default function DashboardScreen({
+  range: initialRange = { kind: "7d" },
+  tz = "Asia/Kolkata",
+  limit = 5,
+}: Props) {
   const router = useRouter();
 
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [data, setData] = useState<DashboardData | null>(null);
+  // Dashboard window (adjustable via filter bar)
+  const [range, setRange] = useState<Range>(initialRange);
+  const qp = useMemo(() => toQueryParams(range), [range]);
 
-  const params = useMemo(() => ({ ...toQueryParams(range), tz, limit }), [range, tz, limit]);
-  const depKey = useMemo(() => JSON.stringify(params), [params]);
+  // Fetch dashboard data for queues, charts, catalog, and settings
+  const { data, loading, refreshing, refresh, error } = useDashboard({
+    include: ["queues", "charts", "catalog", "settings"],
+    range: (qp as any).range,
+    from: (qp as any).from,
+    to: (qp as any).to,
+    tz,
+    limit,
+  });
 
-  const subtitle = useMemo(() => {
-    // render a human label for the header
-    if (range.kind === "today") return "Today";
-    if (range.kind === "7d") return "Last 7 days";
-    if (range.kind === "30d") return "Last 30 days";
-    if (range.kind === "90d") return "Last 90 days";
-    // custom
-    return `${range.start} → ${range.end}`;
-  }, [range]);
+  const summary: DashboardResponse["summary"] | undefined = data?.summary;
 
-  async function load(initial = false) {
-    try {
-      initial ? setLoading(true) : setRefreshing(true);
+  // Map to UI-friendly shapes/units
+  const paymentsQueueForUi = (data?.queues?.payments ?? []).map((p) => ({
+    ...p,
+    amount: (p.amount ?? 0) / 100,
+  }));
 
-      // Fire requests in parallel. Adjust endpoints to match your API.
-      const [
-        summary,
-        settings,
-        paymentsQueue,
-        needsShipmentQueue,
-        revenueDaily,
-        ordersDaily,
-        topProducts,
-        catalogSignals,
-      ] = await Promise.all([
-        getSafe<DashboardData["summary"]>("/owner/home/summary", params),
-        getSafe<DashboardData["settings"]>("/owner/app-settings/status"),
-        getSafe<DashboardData["queues"]["payments"]>("/owner/payments/queue", { ...params, status: "SUBMITTED", limit }),
-        getSafe<DashboardData["queues"]["ordersNeedingShipment"]>("/owner/orders/needs-shipment", { ...params, limit }),
-        getSafe<Array<{ date: string; amount: number }>>("/owner/home/trends/revenue-daily", params),
-        getSafe<Array<{ date: string; count: number }>>("/owner/home/trends/orders-daily", params),
-        getSafe<Array<{ id: string; name: string; qty: number; revenue: number }>>("/owner/home/top-products", params),
-        getSafe<DashboardData["catalog"]>("/owner/catalog/signals", params),
-      ]);
+  const revenueDailyPoints = (data?.charts?.revenueDaily ?? []).map((p, i) => ({
+    x: i,
+    y: (p.amount ?? 0) / 100,
+  }));
 
-      setData({
-        window: { tz },
-        summary: summary ?? undefined,
-        settings: settings ?? undefined,
-        queues: {
-          payments: paymentsQueue ?? [],
-          ordersNeedingShipment: needsShipmentQueue ?? [],
-        },
-        charts: {
-          revenueDaily: revenueDaily ?? [],
-          ordersDaily: ordersDaily ?? [],
-          topProducts: topProducts ?? [],
-        },
-        catalog: catalogSignals ?? undefined,
-      });
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }
+  const revenueDailyTotalRupees =
+    (data?.charts?.revenueDaily ?? []).reduce((acc, r) => acc + (r.amount ?? 0), 0) / 100;
 
-  useEffect(() => {
-    load(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [depKey]);
-
-  const s = data?.summary;
+  const topProductsForUi = (data?.charts?.topProducts ?? []).map((tp) => ({
+    ...tp,
+    revenue: (tp.revenue ?? 0) / 100,
+  }));
 
   return (
     <ScrollView
@@ -149,13 +79,20 @@ export default function DashboardScreen({ range, tz = "Asia/Kolkata", limit = 5 
         <RefreshControl
           tintColor={colors.brand.accent}
           refreshing={refreshing}
-          onRefresh={() => load(false)}
+          onRefresh={refresh}
         />
       }
     >
-      <Header title="Dashboard" subtitle={subtitle} />
+      <Header title="Dashboard" subtitle={labelFor(range)} />
+      <AuthExpiryBanner />
+      {!!error && <ErrorBanner message={error} onRetry={refresh} />}
 
-      {/* Settings banner */}
+      {/* Date-range filter */}
+      <Card>
+        <HistoryFilterBar value={range} onChange={setRange} enableCustom />
+      </Card>
+
+      {/* Settings nudges */}
       {data?.settings && (
         <SettingsBanner
           configured={data.settings.configured}
@@ -165,40 +102,59 @@ export default function DashboardScreen({ range, tz = "Asia/Kolkata", limit = 5 
         />
       )}
 
-      {/* KPIs */}
+      {/* KPI grid */}
       {loading && !data ? (
         <KpiGridSkeleton />
-      ) : s ? (
+      ) : summary ? (
         <KpiGrid
-          columns={2}
+          horizontal
+          itemWidth={170}
+          gap={spacing.md}
           items={[
             {
               title: "Payments to review",
-              value: s.paymentsToReview,
+              value: summary.paymentsToReview,
               tone: "accent",
               onPress: () => router.push("/(app)/payments?status=SUBMITTED"),
             },
-            { title: "Orders placed", value: s.ordersPlaced, onPress: () => router.push("/(app)/orders") },
+            {
+              title: "Orders placed",
+              value: summary.ordersPlaced,
+              onPress: () => router.push("/(app)/orders"),
+            },
             {
               title: "Payment submitted",
-              value: s.ordersPaymentSubmitted,
-              onPress: () => router.push("/(app)/orders?status=PAYMENT_SUBMITTED"),
+              value: summary.ordersPaymentSubmitted,
+              onPress: () =>
+                router.push("/(app)/orders?status=PAYMENT_SUBMITTED"),
             },
-            { title: "Packed", value: s.ordersPacked, onPress: () => router.push("/(app)/orders?status=PACKED") },
-            { title: "Shipped", value: s.ordersShipped, onPress: () => router.push("/(app)/orders?status=SHIPPED") },
+            {
+              title: "Packed",
+              value: summary.ordersPacked,
+              onPress: () => router.push("/(app)/orders?status=PACKED"),
+            },
+            {
+              title: "Shipped",
+              value: summary.ordersShipped,
+              onPress: () => router.push("/(app)/orders?status=SHIPPED"),
+            },
             {
               title: "Delivered",
-              value: s.ordersDelivered,
+              value: summary.ordersDelivered,
               tone: "success",
               onPress: () => router.push("/(app)/orders?status=DELIVERED"),
             },
             {
-              title: "Canceled",
-              value: s.ordersCanceled,
+              title: "Cancelled",
+              value: summary.ordersCanceled,
               tone: "danger",
-              onPress: () => router.push("/(app)/orders?status=CANCELED"),
+              onPress: () => router.push("/(app)/orders?status=CANCELLED"),
             },
-            { title: "Revenue", value: formatCurrencyINR(s.revenuePaid) },
+            {
+              title: "Revenue",
+              value: formatCurrencyINR((summary.revenuePaid ?? 0) / 100),
+              onPress: () => router.push("/(app)/revenue"),
+            },
           ]}
         />
       ) : null}
@@ -209,60 +165,51 @@ export default function DashboardScreen({ range, tz = "Asia/Kolkata", limit = 5 
       ) : (
         <>
           <PaymentsQueue
-            items={data?.queues?.payments ?? []}
+            items={paymentsQueueForUi}
             onSeeAll={() => router.push("/(app)/payments?status=SUBMITTED")}
             onRowPress={(orderId) => router.push(`/(app)/orders/${orderId}`)}
           />
           <ShipmentQueue
             items={data?.queues?.ordersNeedingShipment ?? []}
-            onSeeAll={() =>
-              router.push("/(app)/orders?status=PAYMENT_CONFIRMED,PACKED&needsShipment=true")
-            }
+            onSeeAll={() => router.push("/(app)/orders?needsShipment=true")}
             onRowPress={(orderId) => router.push(`/(app)/orders/${orderId}`)}
           />
         </>
       )}
 
-      {/* Charts */}
+      {/* Charts + Top products */}
       {loading && !data ? (
         <ChartSkeleton />
       ) : (
         <View style={{ rowGap: spacing.md }}>
           <View style={styles.card}>
-            <SectionHeader title="Trends" subtitle="Daily buckets" />
             <View style={{ rowGap: spacing.md }}>
               <MiniChart
                 title="Revenue"
-                points={(data?.charts?.revenueDaily ?? []).map((p, i) => ({ x: i, y: p.amount }))}
-                summary={formatCurrencyINR(
-                  (data?.charts?.revenueDaily ?? []).reduce((a, b) => a + b.amount, 0)
-                )}
+                points={revenueDailyPoints}
+                summary={formatCurrencyINR(revenueDailyTotalRupees)}
                 hint="daily"
               />
               <MiniChart
                 title="Orders"
-                points={(data?.charts?.ordersDaily ?? []).map((p, i) => ({ x: i, y: p.count }))}
-                summary={`${(data?.charts?.ordersDaily ?? []).reduce((a, b) => a + b.count, 0)}`}
+                points={(data?.charts?.ordersDaily ?? []).map((p, i) => ({
+                  x: i,
+                  y: p.count,
+                }))}
+                summary={`${(data?.charts?.ordersDaily ?? []).reduce(
+                  (a, b) => a + b.count,
+                  0
+                )}`}
                 hint="daily"
               />
             </View>
           </View>
 
           <TopProductsList
-            items={data?.charts?.topProducts ?? []}
+            items={topProductsForUi}
             onItemPress={(id) => router.push(`/(app)/catalog?highlight=${id}`)}
           />
         </View>
-      )}
-
-      {/* Catalog signals */}
-      {data?.catalog && (
-        <CatalogSignals
-          lowOrNoImage={data.catalog.lowOrNoImage}
-          recent={data.catalog.recentlyUpdated}
-          onFixNow={() => router.push("/(app)/catalog?filter=no-image")}
-          onOpenCatalog={() => router.push("/(app)/catalog")}
-        />
       )}
     </ScrollView>
   );

@@ -13,8 +13,10 @@ export function formatCount(n: number) {
   return String(n);
 }
 
-export function formatRelative(iso: string) {
+export function formatRelative(iso: string | undefined | null) {
+  if (!iso) return "";
   const d = new Date(iso);
+  if (isNaN(d.getTime())) return ""; // guard invalid date
   const diff = (Date.now() - d.getTime()) / 1000;
   if (diff < 60) return "just now";
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;

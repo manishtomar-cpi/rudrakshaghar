@@ -3,8 +3,15 @@ import { PgClientLike, withTx } from "./_tx";
 type ListArgs = {
   status?: string | string[];
   payment_status?: string | string[];
+  needsShipment?: boolean;
+
+  // window
+  range?: "today" | "7d" | "30d" | "90d" | "custom";
   from?: string;
   to?: string;
+  tz?: string;
+
+  // search/sort/pagination
   q?: string;
   page: number;
   limit: number;
@@ -14,22 +21,26 @@ type ListArgs = {
 export class OrdersRepo {
   constructor(private readonly db: PgClientLike) {}
 
-  async list(args: ListArgs) {
+  /** build WHERE from args (including needsShipment) */
+  private buildWhere(args: ListArgs) {
     const where: string[] = [];
     const params: any[] = [];
 
+    // status
     if (args.status) {
       const arr = Array.isArray(args.status) ? args.status : [args.status];
       params.push(arr);
       where.push(`o.status = ANY($${params.length})`);
     }
 
+    // payment_status
     if (args.payment_status) {
       const arr = Array.isArray(args.payment_status) ? args.payment_status : [args.payment_status];
       params.push(arr);
       where.push(`o.payment_status = ANY($${params.length})`);
     }
 
+    // window: apply on o.created_at by default (history screens)
     if (args.from) {
       params.push(args.from);
       where.push(`o.created_at >= $${params.length}`);
@@ -39,25 +50,39 @@ export class OrdersRepo {
       where.push(`o.created_at < $${params.length}`);
     }
 
+    // search
     if (args.q) {
       params.push(`%${args.q}%`);
       const p = `$${params.length}`;
       where.push(
-        `(o.order_number ILIKE ${p} OR o.ship_name ILIKE ${p} OR o.ship_phone ILIKE ${p} OR p.reference_text ILIKE ${p})`
+        `(o.order_number ILIKE ${p} OR o.ship_name ILIKE ${p} OR o.ship_phone ILIKE ${p})`
       );
     }
 
+    // needs shipment (server-computed)
+    if (args.needsShipment) {
+      where.push(`o.status IN ('PAYMENT_CONFIRMED','PACKED')`);
+      // missing shipment or not shipped
+      where.push(`(s.id IS NULL OR s.shipped_at IS NULL)`);
+    }
+
+    return { where, params };
+  }
+
+  async list(args: ListArgs) {
+    const { where, params } = this.buildWhere(args);
     const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
     const sortSql =
-      args.sort === "order_number" ? "ORDER BY o.order_number ASC"
-      : args.sort === "-created_at" ? "ORDER BY o.created_at DESC"
-      : "ORDER BY o.created_at ASC";
+      args.sort === "order_number" ? "ORDER BY o.order_number ASC" :
+      args.sort === "-created_at" ? "ORDER BY o.created_at DESC" :
+      "ORDER BY o.created_at ASC";
 
     // count
     const countSql = `
       SELECT COUNT(*)::int AS total
       FROM orders o
       LEFT JOIN payments p ON p.order_id = o.id
+      LEFT JOIN shipments s ON s.order_id = o.id
       ${whereSql}
     `;
     const total = (await this.db.query(countSql, params)).rows[0]?.total ?? 0;
@@ -66,19 +91,40 @@ export class OrdersRepo {
     const offset = (args.page - 1) * args.limit;
     params.push(args.limit, offset);
 
+    // ✅ UI-friendly projection (minimal list fields that the app needs)
     const listSql = `
       SELECT
-        o.*,
+        o.id,
+        o.order_number                           AS order_number,
+        o.created_at                             AS placed_at,
+        o.status,
+        o.payment_status,
+
+        COALESCE((
+          SELECT SUM(oi.line_total_paise)::bigint
+          FROM order_items oi
+          WHERE oi.order_id = o.id
+        ), 0)                                     AS total_paise,
+
+        jsonb_build_object(
+          'name',  o.ship_name,
+          'phone', o.ship_phone
+        )                                         AS customer,
+
         jsonb_build_object(
           'status', p.status,
           'submitted_at', p.submitted_at,
           'verified_at', p.verified_at
-        ) AS payment,
+        )                                         AS payment,
+
         jsonb_build_object(
           'courier_name', s.courier_name,
           'awb_number', s.awb_number,
-          'tracking_url', s.tracking_url
-        ) AS shipment
+          'tracking_url', s.tracking_url,
+          'shipped_at', s.shipped_at,
+          'delivered_at', s.delivered_at
+        )                                         AS shipment
+
       FROM orders o
       LEFT JOIN payments p ON p.order_id = o.id
       LEFT JOIN shipments s ON s.order_id = o.id
@@ -99,7 +145,7 @@ export class OrdersRepo {
 
   async listItems(orderId: string) {
     const sql = `
-      SELECT product_id, variant_id, title_snapshot AS title, variant_snapshot AS variant,
+      SELECT id, product_id, variant_id, title_snapshot AS title, variant_snapshot AS variant,
              unit_price_paise, qty, line_total_paise
       FROM order_items WHERE order_id = $1
       ORDER BY id

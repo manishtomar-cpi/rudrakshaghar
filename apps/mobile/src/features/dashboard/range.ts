@@ -1,29 +1,48 @@
-// src/features/dashboard/range.ts
+// apps/mobile/src/features/dashboard/range.ts
 export type Preset = 'today' | '7d' | '30d' | '90d' | 'custom';
 
+export type CustomRange = { kind: 'custom'; start: string; end: string }; // explicit branch
 export type Range =
   | { kind: 'today' }
   | { kind: '7d' }
   | { kind: '30d' }
   | { kind: '90d' }
-  | { kind: 'custom'; start: string; end: string }; // YYYY-MM-DD inclusive
+  | CustomRange; // include explicit custom type
+
+const toIsoStart = (yyyyMmDd: string) => `${yyyyMmDd}T00:00:00.000Z`;
+const toIsoEnd = (yyyyMmDd: string) => `${yyyyMmDd}T23:59:59.999Z`;
 
 const fmt = (d: Date) => d.toISOString().slice(0, 10); // YYYY-MM-DD
 
-export const todayRange = (): Range => ({ kind: 'custom', start: fmt(new Date()), end: fmt(new Date()) });
+export const todayRange = (): CustomRange => {
+  const today = fmt(new Date());
+  return { kind: 'custom', start: today, end: today };
+};
 
-export function toQueryParams(range: Range): Record<string, string | number> {
+/**
+ * Backend contract:
+ * - range: 'today' | '7d' | '30d' | 'custom'
+ * - from/to: required only when range='custom' (ISO string)
+ */
+export function toQueryParams(range: Range): Record<string, string> {
   switch (range.kind) {
     case 'today':
-      return { days: 1 }; // if your API prefers start/end for today, swap: return { start: fmt(new Date()), end: fmt(new Date()) }
+      return { range: 'today' };
     case '7d':
-      return { days: 7 };
+      return { range: '7d' };
     case '30d':
-      return { days: 30 };
-    case '90d':
-      return { days: 90 };
+      return { range: '30d' };
+    case '90d': {
+      // Map 90d to custom (inclusive 90 days)
+      const now = new Date();
+      const end = fmt(now);
+      const startDate = new Date(now);
+      startDate.setDate(startDate.getDate() - 89); // inclusive window of 90 days
+      const start = fmt(startDate);
+      return { range: 'custom', from: toIsoStart(start), to: toIsoEnd(end) };
+    }
     case 'custom':
-      return { start: range.start, end: range.end };
+      return { range: 'custom', from: toIsoStart(range.start), to: toIsoEnd(range.end) };
   }
 }
 
